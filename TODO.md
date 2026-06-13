@@ -1,5 +1,6 @@
 ### 1. Advanced Move Generation 
 - [ ] `GeneratePawnMoves(Board b, int color)`: Shift operations (`<< 8`, `>> 8`) for single pushes, double pushes, and captures.
+- [ ] Add en passant to aforementioned function.
 - [ ] `GenerateSlidingAttacks(int square, ulong occupiedSquares, int pieceType)`: Attack rays for Bishops, Rooks, and Queens (highly recommend researching Magic Bitboards for this).
 - [ ] `IsSquareAttacked(int square, int attackerColor, Board b)`: Boolean threat detection used for checking king safety and castling path legality.
 - [ ] `GenerateAllPseudoLegalMoves(Board b)`: Aggregator that iterates through all bitboards to compile possible moves (ideally into a `Span<Move>` to reduce garbage collection).

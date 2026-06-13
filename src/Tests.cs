@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
-using static ChessEngine.Attacks;
+using static ChessEngine.Knight_Moves;
 
 namespace ChessEngine
 {
