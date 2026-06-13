@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
+using static ChessEngine.Attacks;
+
+init();
+
 
 // 1. Make the board and set up the standard starting position
 Board board = new Board();
@@ -23,10 +27,11 @@ board.MakeMove(moveE4);
 Console.WriteLine("\n=== Board State after e2-e4 ===");
 RenderBoard(board);
 
-// Call the static methods from the separate file
-PrintStatus();
 AnalyzePosition(board);
 
+Console.WriteLine("Tests:");
+Tests.showKnightMoves(27);
+Tests.showKnightMoves(15);
 
 
 
