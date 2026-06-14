@@ -392,6 +392,226 @@ namespace ChessEngine
         }
     }
 
+    public static class BishopMoveGenerator
+    {
+        public static ulong[] BishopMasks = new ulong[64];
+        public static ulong[][] BishopAttacks = new ulong[64][];
+        public static int[] BishopRelevantBits = new int[64];
+
+        // Standard 64-bit Bishop Magics
+        
+        public static readonly ulong[] BishopMagics = new ulong[64] {
+            0x800202680E008200UL, // Square 0
+            0x1010020801102004UL, // Square 1
+            0x0008024400280804UL, // Square 2
+            0x0008204042221012UL, // Square 3
+            0x485414A002000000UL, // Square 4
+            0x4002120220200031UL, // Square 5
+            0x0000821010460485UL, // Square 6
+            0x1002020042080400UL, // Square 7
+            0x0108315006881040UL, // Square 8
+            0x0000206809004090UL, // Square 9
+            0x1080100408444002UL, // Square 10
+            0x2000424081028018UL, // Square 11
+            0x8200011040440022UL, // Square 12
+            0xC000020804840468UL, // Square 13
+            0x0020009401201000UL, // Square 14
+            0x8028010400820804UL, // Square 15
+            0x8010604420088100UL, // Square 16
+            0x0204200228021412UL, // Square 17
+            0x0084489002428100UL, // Square 18
+            0x0001000820420105UL, // Square 19
+            0x0009000811400400UL, // Square 20
+            0x0108101208021800UL, // Square 21
+            0x0022000041100800UL, // Square 22
+            0x2002810146280700UL, // Square 23
+            0x2120088044880888UL, // Square 24
+            0x0410030028020410UL, // Square 25
+            0x4004020681081100UL, // Square 26
+            0x0801041008020020UL, // Square 27
+            0x000200218A008042UL, // Square 28
+            0x000C010068110480UL, // Square 29
+            0x5000840000941420UL, // Square 30
+            0x0090810809210841UL, // Square 31
+            0x4201200800200821UL, // Square 32
+            0x0018480400028409UL, // Square 33
+            0x0008280400A04102UL, // Square 34
+            0x0004020080080080UL, // Square 35
+            0x2040048200010104UL, // Square 36
+            0x0010208020420200UL, // Square 37
+            0x4008110043290800UL, // Square 38
+            0x08080A1040008042UL, // Square 39
+            0x1404020804004121UL, // Square 40
+            0x2485080914801004UL, // Square 41
+            0x2050208020801000UL, // Square 42
+            0x1080010280800800UL, // Square 43
+            0x000004310C001200UL, // Square 44
+            0x0802081001004024UL, // Square 45
+            0x0002324242010400UL, // Square 46
+            0x8C821400488A0200UL, // Square 47
+            0x2501041221040110UL, // Square 48
+            0x1000240402080020UL, // Square 49
+            0x00A0090041100480UL, // Square 50
+            0x01A4240108480301UL, // Square 51
+            0x0000054022820000UL, // Square 52
+            0x2902400204011000UL, // Square 53
+            0x0010841048822080UL, // Square 54
+            0x0009280800802008UL, // Square 55
+            0x0006004228012800UL, // Square 56
+            0x4001120090880848UL, // Square 57
+            0x0000802100415000UL, // Square 58
+            0x98C001C080208800UL, // Square 59
+            0x0000201011220220UL, // Square 60
+            0x0860001910658200UL, // Square 61
+            0x8024100290010220UL, // Square 62
+            0x0308820082040100UL, // Square 63
+        };
+
+        public static int GetBishopMoves(Board b, ulong bishops, int color, Span<Move> moves)
+        {
+            int moveCount = 0;
+
+            ulong friendlyPieces = color == 0 
+                ? (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5])
+                : (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11]);
+                
+            ulong enemyPieces = color == 0
+                ? (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11])
+                : (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5]);
+
+            ulong occupied = friendlyPieces | enemyPieces;
+            int pieceType = color == 0 ? 2 : 8; // 2 = White Bishop, 8 = Black Bishop
+
+            ulong bishopsIter = bishops;
+            while (bishopsIter != 0)
+            {
+                int fromSquare = BitOperations.TrailingZeroCount(bishopsIter);
+
+                ulong blockers = occupied & BishopMasks[fromSquare];
+                int magicIndex = (int)((blockers * BishopMagics[fromSquare]) >> (64 - BishopRelevantBits[fromSquare]));
+                ulong attacks = BishopAttacks[fromSquare][magicIndex] & ~friendlyPieces;
+
+                ulong attacksIter = attacks;
+                while (attacksIter != 0)
+                {
+                    int toSquare = BitOperations.TrailingZeroCount(attacksIter);
+                    bool isCapture = (enemyPieces & (1UL << toSquare)) != 0;
+                    
+                    moves[moveCount++] = new Move(fromSquare, toSquare, pieceType, isCapture);
+                    attacksIter &= attacksIter - 1;
+                }
+
+                bishopsIter &= bishopsIter - 1;
+            }
+
+            return moveCount;
+        }
+
+        public static void PreCalculateBishopAttacks()
+        {
+            for (int square = 0; square < 64; square++)
+            {
+                BishopMasks[square] = CreateBishopMask(square);
+                BishopRelevantBits[square] = BitOperations.PopCount(BishopMasks[square]);
+
+                int permutationCount = 1 << BishopRelevantBits[square];
+                BishopAttacks[square] = new ulong[permutationCount];
+
+                ulong mask = BishopMasks[square];
+                ulong blockerPattern = 0; 
+
+                do
+                {
+                    int magicIndex = (int)((blockerPattern * BishopMagics[square]) >> (64 - BishopRelevantBits[square]));
+                    BishopAttacks[square][magicIndex] = CalculateNaiveBishopAttacks(square, blockerPattern);
+                    blockerPattern = (blockerPattern - mask) & mask;
+                } 
+                while (blockerPattern != 0);
+            }
+        }
+
+        public static ulong CreateBishopMask(int square)
+        {
+            ulong mask = 0UL;
+            int r = square / 8;
+            int f = square % 8;
+
+            // Diagonals stop at rank 1, rank 6, file 1, and file 6 to ignore outer edges
+            for (int i = r + 1, j = f + 1; i <= 6 && j <= 6; i++, j++) mask |= (1UL << (i * 8 + j)); // NE
+            for (int i = r + 1, j = f - 1; i <= 6 && j >= 1; i++, j--) mask |= (1UL << (i * 8 + j)); // NW
+            for (int i = r - 1, j = f + 1; i >= 1 && j <= 6; i--, j++) mask |= (1UL << (i * 8 + j)); // SE
+            for (int i = r - 1, j = f - 1; i >= 1 && j >= 1; i--, j--) mask |= (1UL << (i * 8 + j)); // SW
+
+            return mask;
+        }
+
+        public static ulong CalculateNaiveBishopAttacks(int square, ulong blockers)
+        {
+            ulong attacks = 0UL;
+            int r = square / 8;
+            int f = square % 8;
+
+            for (int i = r + 1, j = f + 1; i <= 7 && j <= 7; i++, j++) { attacks |= (1UL << (i * 8 + j)); if ((blockers & (1UL << (i * 8 + j))) != 0) break; }
+            for (int i = r + 1, j = f - 1; i <= 7 && j >= 0; i++, j--) { attacks |= (1UL << (i * 8 + j)); if ((blockers & (1UL << (i * 8 + j))) != 0) break; }
+            for (int i = r - 1, j = f + 1; i >= 0 && j <= 7; i--, j++) { attacks |= (1UL << (i * 8 + j)); if ((blockers & (1UL << (i * 8 + j))) != 0) break; }
+            for (int i = r - 1, j = f - 1; i >= 0 && j >= 0; i--, j--) { attacks |= (1UL << (i * 8 + j)); if ((blockers & (1UL << (i * 8 + j))) != 0) break; }
+
+            return attacks;
+        }
+    }
+
+    public static class QueenMoveGenerator
+    {
+        public static int GetQueenMoves(Board b, ulong queens, int color, Span<Move> moves)
+        {
+            int moveCount = 0;
+
+            ulong friendlyPieces = color == 0 
+                ? (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5])
+                : (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11]);
+                
+            ulong enemyPieces = color == 0
+                ? (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11])
+                : (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5]);
+
+            ulong occupied = friendlyPieces | enemyPieces;
+            int pieceType = color == 0 ? 4 : 10; // 4 = White Queen, 10 = Black Queen
+
+            ulong queensIter = queens;
+            while (queensIter != 0)
+            {
+                int fromSquare = BitOperations.TrailingZeroCount(queensIter);
+
+                // Look up Rook Attacks
+                ulong rookBlockers = occupied & RookMoveGenerator.RookMasks[fromSquare];
+                int rookMagicIndex = (int)((rookBlockers * RookMoveGenerator.RookMagics[fromSquare]) >> (64 - RookMoveGenerator.RookRelevantBits[fromSquare]));
+                ulong rookAttacks = RookMoveGenerator.RookAttacks[fromSquare][rookMagicIndex];
+
+                // Look up Bishop Attacks
+                ulong bishopBlockers = occupied & BishopMoveGenerator.BishopMasks[fromSquare];
+                int bishopMagicIndex = (int)((bishopBlockers * BishopMoveGenerator.BishopMagics[fromSquare]) >> (64 - BishopMoveGenerator.BishopRelevantBits[fromSquare]));
+                ulong bishopAttacks = BishopMoveGenerator.BishopAttacks[fromSquare][bishopMagicIndex];
+
+                // OR them together
+                ulong attacks = (rookAttacks | bishopAttacks) & ~friendlyPieces;
+
+                ulong attacksIter = attacks;
+                while (attacksIter != 0)
+                {
+                    int toSquare = BitOperations.TrailingZeroCount(attacksIter);
+                    bool isCapture = (enemyPieces & (1UL << toSquare)) != 0;
+                    
+                    moves[moveCount++] = new Move(fromSquare, toSquare, pieceType, isCapture);
+                    attacksIter &= attacksIter - 1;
+                }
+
+                queensIter &= queensIter - 1;
+            }
+
+            return moveCount;
+        }
+    }
+
     public static class allMoves {
         public static int GenerateAllPseudoLegalMoves(Board b, Span<Move> moves)
         {
@@ -399,23 +619,27 @@ namespace ChessEngine
             int color = b.SideToMove;
 
             // 1. Generate Pawn Moves
-            // Pass the whole span. It returns how many moves were added.
             int pawnCount = PawnMoveGenerator.GetPawnMoves(b, b.Pieces[color == 0 ? 0 : 6], color, moves);
             totalMoves += pawnCount;
 
             // 2. Generate Knight Moves
-            // Slice the span so the knights start writing exactly where the pawns left off!
             int knightCount = KnightMoveGenerator.GetKnightMoves(b, b.Pieces[color == 0 ? 1 : 7], color, moves.Slice(totalMoves));
             totalMoves += knightCount;
 
-            // 3. Generate Sliding Moves (Bishops, Rooks, Queens)
-            // int sliderCount = SlidingMoveGenerator.GenerateSlidingMoves(b, color, moves.Slice(totalMoves));
-            // totalMoves += sliderCount;
+            // 3. Generate Rook Moves
+            int rookCount = RookMoveGenerator.GetRookMoves(b, b.Pieces[color == 0 ? 3 : 9], color, moves.Slice(totalMoves));
+            totalMoves += rookCount;
 
-            // 4. Generate King Moves (and Castling)
-            // int kingCount = KingMoveGenerator.GenerateKingMoves(b, b.Pieces[color == 0 ? 5 : 11], color, moves.Slice(totalMoves));
-            // totalMoves += kingCount;
+            // 4. Generate Bishop Moves
+            int bishopCount = BishopMoveGenerator.GetBishopMoves(b, b.Pieces[color == 0 ? 2 : 8], color, moves.Slice(totalMoves));
+            totalMoves += bishopCount;
 
+            // 5. Generate Queen Moves
+            int queenCount = QueenMoveGenerator.GetQueenMoves(b, b.Pieces[color == 0 ? 4 : 10], color, moves.Slice(totalMoves));
+            totalMoves += queenCount;
+
+            // TODO: Generate King Moves (and Castling)
+            
             return totalMoves;
         }
     }

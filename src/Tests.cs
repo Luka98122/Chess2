@@ -1,67 +1,143 @@
 using System;
-using System.Collections.Generic;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
-using static ChessEngine.KnightMoveGenerator;
 
 namespace ChessEngine
 {
+    // Define a delegate so we can pass different move generator functions to our test runner dynamically
+    public delegate int MoveGenerator(Board b, ulong pieces, int color, Span<Move> moves);
+
     public static class Tests
     {
-        public static void showKnightMoves(int pos)
-        {
-            //pos is 0 to 63 inclusive
-            renderBitboard(KnightPreCalcs[pos], "Knight @ "+IndexToNotation[pos]);
-        }
-
-        public static void TestRookMagicMoves()
-        {
-            Console.WriteLine("\n=== RUNNING ROOK MAGIC BITBOARD TEST ===");
-            Board b = new Board();
-            
-            // 1. Clear the board completely (overriding standard setup)
-            for(int i = 0; i < 12; i++) 
-            {
-                b.Pieces[i] = 0UL;
-            }
-
-            // 2. Set up a custom scenario
-            // White Rook on d4 (Rank 4, File D = index 27)
-            b.Pieces[3] |= (1UL << 27); 
-
-            // Friendly White Pawn on d6 (Rank 6, File D = index 43) -> Blocks North
-            b.Pieces[0] |= (1UL << 43);
-
-            // Enemy Black Knight on g4 (Rank 4, File G = index 30) -> Blocks East (Capture)
-            b.Pieces[7] |= (1UL << 30);
-
-            b.SideToMove = 0; // White's turn
-
-            Console.WriteLine("1. Initial Board Setup (Rook: d4 | Friendly: d6 | Enemy: g4):");
-            RenderBoard(b);
-
-            // 3. Generate moves using your Magic Bitboards
-            Span<Move> moves = stackalloc Move[218];
-            int moveCount = RookMoveGenerator.GetRookMoves(b, b.Pieces[3], 0, moves);
-
-            // 4. Convert the generated Move structs back into a bitboard for visualization
-            ulong attackBitboard = 0UL;
-            for (int i = 0; i < moveCount; i++)
-            {
-                attackBitboard |= (1UL << moves[i].ToSquare);
-            }
-
-            Console.WriteLine($"\n2. Rook generated {moveCount} valid moves.");
-            renderBitboard(attackBitboard, "Valid Rook Targets");
-        }
-
         public static void allTests()
         {
-            Console.WriteLine("Tests:");
-            Tests.showKnightMoves(27);
-            Tests.showKnightMoves(15);
+            Console.WriteLine("=== RUNNING ENGINE TESTS ===\n");
 
-            Tests.TestRookMagicMoves();
+            // --- 1. ROOK TESTS ---
+            // d4 (index 27)
+            RunTest("1. Rook (Open Center)", SetupBoard((3, 27)), 0, 3, 27, RookMoveGenerator.GetRookMoves);
+            // d4 with friendly Pawn on d6 (index 43) and enemy Knight on g4 (index 30)
+            RunTest("2. Rook (Blocked & Captures)", SetupBoard((3, 27), (0, 43), (7, 30)), 0, 3, 27, RookMoveGenerator.GetRookMoves);
+
+            // --- 2. BISHOP TESTS ---
+            // d4 (index 27)
+            RunTest("3. Bishop (Open Center)", SetupBoard((2, 27)), 0, 2, 27, BishopMoveGenerator.GetBishopMoves);
+            // c3 (index 18) with friendly Pawn on e5 (index 36) and enemy Pawn on a5 (index 32)
+            RunTest("4. Bishop (Blocked & Captures)", SetupBoard((2, 18), (0, 36), (6, 32)), 0, 2, 18, BishopMoveGenerator.GetBishopMoves);
+
+            // --- 3. QUEEN TESTS ---
+            // e4 (index 28)
+            RunTest("5. Queen (Open Center)", SetupBoard((4, 28)), 0, 4, 28, QueenMoveGenerator.GetQueenMoves);
+            // d4 (index 27) completely boxed in by friendly and enemy pieces
+            RunTest("6. Queen (Crowded Center)", SetupBoard((4, 27), (0, 35), (0, 36), (6, 18), (6, 28)), 0, 4, 27, QueenMoveGenerator.GetQueenMoves);
+
+            // --- 4. KNIGHT TESTS ---
+            // e4 (index 28)
+            RunTest("7. Knight (Center Jump)", SetupBoard((1, 28)), 0, 1, 28, KnightMoveGenerator.GetKnightMoves);
+            // a1 (index 0) to test edge boundary constraints
+            RunTest("8. Knight (Edge A1)", SetupBoard((1, 0), (0, 10)), 0, 1, 0, KnightMoveGenerator.GetKnightMoves);
+
+            // --- 5. PAWN TESTS ---
+            // White Pawn on e2 (index 12) checking single and double pushes
+            RunTest("9. White Pawn (Pushes)", SetupBoard((0, 12)), 0, 0, 12, PawnMoveGenerator.GetPawnMoves);
+            // White Pawn on d4 (index 27) with Black pawns on c5 (34) and e5 (36)
+            RunTest("10. White Pawn (Captures)", SetupBoard((0, 27), (6, 34), (6, 36)), 0, 0, 27, PawnMoveGenerator.GetPawnMoves);
+            // Black Pawn on e7 (index 52) checking downward pushes
+            RunTest("11. Black Pawn (Pushes)", SetupBoard((6, 52)), 1, 6, 52, PawnMoveGenerator.GetPawnMoves);
+        }
+
+        // Helper to quickly spawn a board with specific pieces
+        // Format: (PieceType index, Square index)
+        private static Board SetupBoard(params (int pieceType, int square)[] placements)
+        {
+            Board b = new Board();
+            // Clear standard array
+            for(int i = 0; i < 12; i++) b.Pieces[i] = 0UL;
+            
+            foreach (var p in placements)
+            {
+                b.Pieces[p.pieceType] |= (1UL << p.square);
+            }
+            return b;
+        }
+
+        private static void RunTest(string title, Board b, int color, int targetPieceType, int targetSquare, MoveGenerator generator)
+        {
+            b.SideToMove = color;
+            Span<Move> moves = stackalloc Move[218];
+            
+            // Extract the bitboard of just the specific piece type we are testing
+            ulong pieceBitboard = b.Pieces[targetPieceType];
+            
+            // Execute the provided delegate function
+            int count = generator(b, pieceBitboard, color, moves);
+
+            // Convert the Move span back into a raw bitboard for visualization
+            ulong attackBitboard = 0UL;
+            for (int i = 0; i < count; i++)
+            {
+                // Only visualize moves originating from our specific test piece 
+                if (moves[i].FromSquare == targetSquare)
+                {
+                    attackBitboard |= (1UL << moves[i].ToSquare);
+                }
+            }
+
+            RenderSideBySide(title, b, attackBitboard, count);
+        }
+
+        private static void RenderSideBySide(string title, Board b, ulong attacks, int moveCount)
+        {
+            char[] pieceChars = { 'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k' };
+            
+            Console.WriteLine($"\n--- {title} ---");
+            Console.WriteLine($"Generated {moveCount} valid moves.");
+            Console.WriteLine("  Board State              Attack Map");
+            Console.WriteLine("  +-----------------+      +-----------------+");
+
+            for (int rank = 7; rank >= 0; rank--)
+            {
+                // 1. Build the Left Board string (Current State)
+                string left = $"{rank + 1} | ";
+                for (int file = 0; file < 8; file++)
+                {
+                    int square = rank * 8 + file;
+                    char printChar = '.';
+                    
+                    for (int pt = 0; pt < 12; pt++)
+                    {
+                        if ((b.Pieces[pt] & (1UL << square)) != 0)
+                        {
+                            printChar = pieceChars[pt];
+                            break;
+                        }
+                    }
+                    left += printChar + " ";
+                }
+                left += "|";
+
+                // 2. Build the Right Board string (Attack bitboard mapping)
+                string right = $"{rank + 1} | ";
+                for (int file = 0; file < 8; file++)
+                {
+                    int square = rank * 8 + file;
+                    if ((attacks & (1UL << square)) != 0)
+                    {
+                        right += "x "; // using 'x' for targeting to visually separate from '.'
+                    }
+                    else
+                    {
+                        right += ". ";
+                    }
+                }
+                right += "|";
+
+                // 3. Print them side-by-side with spacing
+                Console.WriteLine(left + "    " + right);
+            }
+            
+            Console.WriteLine("  +-----------------+      +-----------------+");
+            Console.WriteLine("    a b c d e f g h          a b c d e f g h");
         }
     }
 }

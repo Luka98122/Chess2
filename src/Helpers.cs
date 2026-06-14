@@ -14,7 +14,7 @@ namespace ChessEngine
             InitializeNotationMaps();
 
             KnightMoveGenerator.PreCalculateKnightMoves();
-
+            BishopMoveGenerator.PreCalculateBishopAttacks();
             RookMoveGenerator.PreCalculateRookAttacks();
         }
         

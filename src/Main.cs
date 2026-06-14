@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
 using static ChessEngine.KnightMoveGenerator;
-
+//MagicFinder.GenerateAllBishopMagics();
 init();
 
 
