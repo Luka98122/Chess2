@@ -7,8 +7,15 @@ namespace ChessEngine
 
         public static void init()
         {
-            ChessEngine.KnightMoveGenerator.PreCalculateKnightMoves();
+            //Console.WriteLine("Finding Rook Magics... This might take a minute.");
+            //MagicFinder.GenerateAllRookMagics();
+            //Console.WriteLine("Done! Copy the output above.");
+            //return;
             InitializeNotationMaps();
+
+            KnightMoveGenerator.PreCalculateKnightMoves();
+
+            RookMoveGenerator.PreCalculateRookAttacks();
         }
         
         public static Dictionary<int, string> IndexToNotation = new Dictionary<int, string>(); // fun fekt: int.getHashCode() runnuje odmah i samo vrati taj int, ne hashuje ga.

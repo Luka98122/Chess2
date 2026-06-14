@@ -196,6 +196,202 @@ namespace ChessEngine
             return moveCount;
         }
     }
+    
+    public static class RookMoveGenerator
+    {
+        // 1. Core Arrays for Magic Bitboards
+        public static ulong[] RookMasks = new ulong[64];
+        public static ulong[][] RookAttacks = new ulong[64][];
+        
+        // The number of relevant blocker bits for a rook on each square (varies from 7 to 12)
+        public static int[] RookRelevantBits = new int[64];
+
+        // You will need to populate this with standard 64-bit Rook Magic Numbers 
+        // (easily found on the Chess Programming Wiki).
+        
+        public static readonly ulong[] RookMagics = new ulong[64] {
+            0x0A80011040008060UL, // Square 0
+            0x424000E000401000UL, // Square 1
+            0x2880088010042000UL, // Square 2
+            0x0200060020084011UL, // Square 3
+            0x1080040008000281UL, // Square 4
+            0x0100040008020100UL, // Square 5
+            0xA080208051000200UL, // Square 6
+            0x008000428005A100UL, // Square 7
+            0x002180008040002CUL, // Square 8
+            0xC200404000201000UL, // Square 9
+            0x0101002001001044UL, // Square 10
+            0x0101000900201000UL, // Square 11
+            0x8112800400804801UL, // Square 12
+            0x0100800400020080UL, // Square 13
+            0x0100808001000200UL, // Square 14
+            0x4082000084004916UL, // Square 15
+            0x1804848000C00226UL, // Square 16
+            0x0002850040010020UL, // Square 17
+            0x4010008020001089UL, // Square 18
+            0x3010004008040040UL, // Square 19
+            0x8603010004100800UL, // Square 20
+            0x040008010420C010UL, // Square 21
+            0x0400340018820150UL, // Square 22
+            0x10400A0010488104UL, // Square 23
+            0x0660208180004000UL, // Square 24
+            0x034C200880400082UL, // Square 25
+            0x4000110100200044UL, // Square 26
+            0x8100100500210008UL, // Square 27
+            0x0000040080080082UL, // Square 28
+            0x7880020080040080UL, // Square 29
+            0xA001000101040200UL, // Square 30
+            0x0008004200008401UL, // Square 31
+            0x0080204000800081UL, // Square 32
+            0x149000201240004AUL, // Square 33
+            0x0007001041002000UL, // Square 34
+            0x6C08001000808008UL, // Square 35
+            0x10E0100501000800UL, // Square 36
+            0x2400020080800400UL, // Square 37
+            0x2000210224001088UL, // Square 38
+            0x2000800040800100UL, // Square 39
+            0x0280002000414008UL, // Square 40
+            0x0030002000404000UL, // Square 41
+            0x0529001020010044UL, // Square 42
+            0x0001002010010008UL, // Square 43
+            0x00B8000901110004UL, // Square 44
+            0x0000104004080120UL, // Square 45
+            0x0400500208040041UL, // Square 46
+            0x0041088044060001UL, // Square 47
+            0x11C0004820800480UL, // Square 48
+            0x4802002081004200UL, // Square 49
+            0x0000201040820200UL, // Square 50
+            0x8000100009002100UL, // Square 51
+            0x1F04800400080080UL, // Square 52
+            0x0020800200040080UL, // Square 53
+            0x0A10418208104400UL, // Square 54
+            0x0080140100508200UL, // Square 55
+            0x8040800010290441UL, // Square 56
+            0x2A40400683102501UL, // Square 57
+            0x4000A0001B004013UL, // Square 58
+            0x0022850020581001UL, // Square 59
+            0x004A902800030301UL, // Square 60
+            0x400100028804002DUL, // Square 61
+            0x4210014800900204UL, // Square 62
+            0x0400408044010022UL, // Square 63
+        };
+
+        public static int GetRookMoves(Board b, ulong rooks, int color, Span<Move> moves)
+        {
+            int moveCount = 0;
+
+            // 1. Calculate bitboards
+            ulong friendlyPieces = color == 0 
+                ? (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5])
+                : (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11]);
+                
+            ulong enemyPieces = color == 0
+                ? (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11])
+                : (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5]);
+
+            ulong occupied = friendlyPieces | enemyPieces;
+            int pieceType = color == 0 ? 3 : 9; // 3 = White Rook, 9 = Black Rook
+
+            // 2. Iterate over rooks
+            ulong rooksIter = rooks;
+            while (rooksIter != 0)
+            {
+                int fromSquare = BitOperations.TrailingZeroCount(rooksIter);
+
+                // --- MAGIC BITBOARD HASHING ---
+                // Mask the board to only look at relevant blockers for this square
+                ulong blockers = occupied & RookMasks[fromSquare];
+                
+                // Multiply by the magic number and shift down to get a clean array index
+                int magicIndex = (int)((blockers * RookMagics[fromSquare]) >> (64 - RookRelevantBits[fromSquare]));
+                
+                // Instantly look up the precalculated attack bitboard and mask out friendly pieces
+                ulong attacks = RookAttacks[fromSquare][magicIndex] & ~friendlyPieces;
+
+                // 3. Extract moves
+                ulong attacksIter = attacks;
+                while (attacksIter != 0)
+                {
+                    int toSquare = BitOperations.TrailingZeroCount(attacksIter);
+                    bool isCapture = (enemyPieces & (1UL << toSquare)) != 0;
+                    
+                    moves[moveCount++] = new Move(fromSquare, toSquare, pieceType, isCapture);
+                    attacksIter &= attacksIter - 1;
+                }
+
+                rooksIter &= rooksIter - 1;
+            }
+
+            return moveCount;
+        }
+
+        // --- THE INITIALIZATION (Runs once at startup) ---
+        public static void PreCalculateRookAttacks()
+        {
+            for (int square = 0; square < 64; square++)
+            {
+                // 1. Get the relevant blocker mask for this square (ignoring board edges)
+                RookMasks[square] = CreateRookMask(square);
+                RookRelevantBits[square] = BitOperations.PopCount(RookMasks[square]);
+
+                // 2. Allocate memory for this square's specific number of permutations (2^n)
+                int permutationCount = 1 << RookRelevantBits[square];
+                RookAttacks[square] = new ulong[permutationCount];
+
+                // 3. Generate all possible blocker combinations and calculate naive attacks
+                ulong mask = RookMasks[square];
+                ulong blockerPattern = 0; // Carry-Rippler trick to iterate sub-masks
+
+                do
+                {
+                    // Calculate the magic index for this specific blocker pattern
+                    int magicIndex = (int)((blockerPattern * RookMagics[square]) >> (64 - RookRelevantBits[square]));
+                    
+                    // Run standard slow raycasting to find the true attacks for this blocker state
+                    RookAttacks[square][magicIndex] = CalculateNaiveRookAttacks(square, blockerPattern);
+
+                    // Iterate to the next sub-mask permutation
+                    blockerPattern = (blockerPattern - mask) & mask;
+                } 
+                while (blockerPattern != 0);
+            }
+        }
+
+        // Helper: Generates the blocker mask (ignores outer edges because rays stop there anyway)
+        public static ulong CreateRookMask(int square)
+        {
+            ulong mask = 0UL;
+            int r = square / 8;
+            int f = square % 8;
+
+            for (int i = r + 1; i <= 6; i++) mask |= (1UL << (i * 8 + f)); // North
+            for (int i = r - 1; i >= 1; i--) mask |= (1UL << (i * 8 + f)); // South
+            for (int i = f + 1; i <= 6; i++) mask |= (1UL << (r * 8 + i)); // East
+            for (int i = f - 1; i >= 1; i--) mask |= (1UL << (r * 8 + i)); // West
+
+            return mask;
+        }
+
+        // Helper: Slow raycasting used ONLY during startup
+        public static ulong CalculateNaiveRookAttacks(int square, ulong blockers)
+        {
+            ulong attacks = 0UL;
+            int r = square / 8;
+            int f = square % 8;
+
+            // North
+            for (int i = r + 1; i <= 7; i++) { attacks |= (1UL << (i * 8 + f)); if ((blockers & (1UL << (i * 8 + f))) != 0) break; }
+            // South
+            for (int i = r - 1; i >= 0; i--) { attacks |= (1UL << (i * 8 + f)); if ((blockers & (1UL << (i * 8 + f))) != 0) break; }
+            // East
+            for (int i = f + 1; i <= 7; i++) { attacks |= (1UL << (r * 8 + i)); if ((blockers & (1UL << (r * 8 + i))) != 0) break; }
+            // West
+            for (int i = f - 1; i >= 0; i--) { attacks |= (1UL << (r * 8 + i)); if ((blockers & (1UL << (r * 8 + i))) != 0) break; }
+
+            return attacks;
+        }
+    }
+
     public static class allMoves {
         public static int GenerateAllPseudoLegalMoves(Board b, Span<Move> moves)
         {
