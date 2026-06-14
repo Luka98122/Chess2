@@ -7,7 +7,7 @@ namespace ChessEngine
 
         public static void init()
         {
-            ChessEngine.Knight_Moves.PreCalculateKnightMoves();
+            ChessEngine.KnightMoveGenerator.PreCalculateKnightMoves();
             InitializeNotationMaps();
         }
         

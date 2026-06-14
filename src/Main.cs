@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
-using static ChessEngine.Knight_Moves;
+using static ChessEngine.KnightMoveGenerator;
 
 init();
 
@@ -29,9 +29,7 @@ RenderBoard(board);
 
 AnalyzePosition(board);
 
-Console.WriteLine("Tests:");
-Tests.showKnightMoves(27);
-Tests.showKnightMoves(15);
+Tests.allTests();
 
 
 

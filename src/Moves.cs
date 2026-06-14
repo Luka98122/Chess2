@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace ChessEngine
 {
-    public static class Knight_Moves
+    public static class KnightMoveGenerator
     {
         public static Dictionary<int, ulong> KnightPreCalcs = new Dictionary<int, ulong>();
         public static void PreCalculateKnightMoves()
@@ -35,6 +35,58 @@ namespace ChessEngine
                 }
             }
         }
+
+        public static int GetKnightMoves(Board b, ulong knights, int color, Span<Move> moves)
+        {
+            int moveCount = 0;
+
+            // 1. Calculate Friendly and Enemy piece bitboards
+            ulong friendlyPieces = color == 0 
+                ? (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5])
+                : (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11]);
+                
+            ulong enemyPieces = color == 0
+                ? (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11])
+                : (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5]);
+
+            // Knights can jump anywhere, as long as they don't land on a friendly piece
+            ulong validSquares = ~friendlyPieces;
+            
+            // PieceType: White Knight = 1, Black Knight = 7
+            int pieceType = color == 0 ? 1 : 7; 
+
+            // 2. Iterate ONLY over the squares that actually contain a knight
+            ulong knightsIter = knights;
+            while (knightsIter != 0)
+            {
+                // Find the index (0-63) of the first knight in the bitboard
+                int fromSquare = BitOperations.TrailingZeroCount(knightsIter);
+
+                // 3. Look up the precalculated attacks and mask out friendly pieces
+                ulong attacks = KnightMoveGenerator.KnightPreCalcs[fromSquare] & validSquares;
+
+                // 4. Iterate over all valid destination squares for this specific knight
+                ulong attacksIter = attacks;
+                while (attacksIter != 0)
+                {
+                    int toSquare = BitOperations.TrailingZeroCount(attacksIter);
+                    
+                    // A move is a capture if the destination square intersects with the enemy piece bitboard
+                    bool isCapture = (enemyPieces & (1UL << toSquare)) != 0;
+
+                    // Add the move to the span
+                    moves[moveCount++] = new Move(fromSquare, toSquare, pieceType, isCapture);
+
+                    // Clear the destination bit we just processed
+                    attacksIter &= attacksIter - 1;
+                }
+
+                // Clear the knight bit we just processed so the loop moves to the next knight
+                knightsIter &= knightsIter - 1;
+            }
+
+            return moveCount;
+        }
     }
 
     public static class PawnMoveGenerator
@@ -44,7 +96,7 @@ namespace ChessEngine
         private const ulong NotFileH = 0x7F7F7F7F7F7F7F7FUL;
 
         // The optimized signature: Pass the board state, the pawn bitboard, the color, and the target Span.
-        public static int GeneratePawnMoves(Board b, ulong pawns, int color, Span<Move> moves)
+        public static int GetPawnMoves(Board b, ulong pawns, int color, Span<Move> moves)
         {
             int moveCount = 0;
 
@@ -142,6 +194,33 @@ namespace ChessEngine
 
             // Return the total number of moves injected into the Span
             return moveCount;
+        }
+    }
+    public static class allMoves {
+        public static int GenerateAllPseudoLegalMoves(Board b, Span<Move> moves)
+        {
+            int totalMoves = 0;
+            int color = b.SideToMove;
+
+            // 1. Generate Pawn Moves
+            // Pass the whole span. It returns how many moves were added.
+            int pawnCount = PawnMoveGenerator.GetPawnMoves(b, b.Pieces[color == 0 ? 0 : 6], color, moves);
+            totalMoves += pawnCount;
+
+            // 2. Generate Knight Moves
+            // Slice the span so the knights start writing exactly where the pawns left off!
+            int knightCount = KnightMoveGenerator.GetKnightMoves(b, b.Pieces[color == 0 ? 1 : 7], color, moves.Slice(totalMoves));
+            totalMoves += knightCount;
+
+            // 3. Generate Sliding Moves (Bishops, Rooks, Queens)
+            // int sliderCount = SlidingMoveGenerator.GenerateSlidingMoves(b, color, moves.Slice(totalMoves));
+            // totalMoves += sliderCount;
+
+            // 4. Generate King Moves (and Castling)
+            // int kingCount = KingMoveGenerator.GenerateKingMoves(b, b.Pieces[color == 0 ? 5 : 11], color, moves.Slice(totalMoves));
+            // totalMoves += kingCount;
+
+            return totalMoves;
         }
     }
 }
