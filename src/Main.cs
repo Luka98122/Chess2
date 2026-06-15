@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reflection.PortableExecutable;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
 using static ChessEngine.KnightMoveGenerator;
@@ -13,15 +14,18 @@ InitializeStartingPosition(board);
 
 Console.WriteLine("=== Initial Board State ===");
 RenderBoard(board);
+// possibleMoves je span koji se passuje u skoro sve
+Span<Move> possibleMoves = new Move[500];
+showMoves(board, possibleMoves);
 
-// 2. Play the move e2-e4z`
-// Square Math: 
-// A1 = 0, B1 = 1 ... E1 = 4
-// E2 = Rank 2 (index 1) * 8 + File E (index 4) = 12
-// E4 = Rank 4 (index 3) * 8 + File E (index 4) = 28
-// PieceType 0 is White Pawn
 Move moveE4 = new Move(from: 12, to: 28, piece: 0);
 board.MakeMove(moveE4);
+showMoves(board, possibleMoves);
+
+Move moveC5 = new Move(from: 50, to: 34, piece: 6);
+board.MakeMove(moveC5);
+showMoves(board, possibleMoves);
+RenderBoard(board);
 
 // 3. Render the board state again to show the move
 Console.WriteLine("\n=== Board State after e2-e4 ===");
@@ -157,6 +161,23 @@ namespace ChessEngine
                 Pieces[i] &= squareMask;
             }
         }
+
+        public bool isCheckForColor(int col, Span<Move> moves) 
+        {
+            int moveLen = allMoves.GenerateAllPseudoLegalMoves(this, moves, 1-col); // 1-col is the opposing color, so we get the moves for the opposite color
+
+            ulong attackBB = 0UL;
+
+            for (int i = 0; i < moveLen; i++)
+            {
+                int pos = moves[i].ToSquare;
+                attackBB |= 1UL << pos;
+            }
+
+            return (this.Pieces[5 + 6 * col] & attackBB) != 0;
+
+        }
+    
     }
 }
 

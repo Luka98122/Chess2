@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 
 namespace ChessEngine
 {
@@ -746,11 +747,85 @@ namespace ChessEngine
         }
     }
 
+    public static class KingMoveGenerator
+    {
+        public static Dictionary<int, ulong> KingPreCalcs = new Dictionary<int, ulong>();
+        public static void PreCalculateKingMoves()
+        {
+            int[] dy = { -1, -1, -1, 0, 1, 1, 1, 0 };
+            int[] dx = { -1, 0, 1  , 1, 1, 0, -1, -1 };
+
+            for (int y = 0; y < 8; y++)
+            {
+                for (int x = 0; x < 8; x++)
+                {
+                    int pos = y * 8 + x;
+                    ulong res = 0UL;
+
+                    for (int i = 0; i < 8; i++)
+                    {
+                        int targetY = y + dy[i];
+                        int targetX = x + dx[i];
+
+                        if (targetY >= 0 && targetY < 8 && targetX >= 0 && targetX < 8)
+                        {
+                            int targetPos = targetY * 8 + targetX;
+                            res |= 1UL << targetPos; //flipuje tu poziciju bitboarda na keca
+                        }
+                    }
+
+                    KingPreCalcs[pos] = res;
+                }
+            }
+        }
+
+        public static int GetKingMoves(Board b, ulong kings, int color, Span<Move> moves)
+        {
+            int moveCount = 0;
+
+            ulong friendlyPieces = color == 0
+                ? (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5])
+                : (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11]);
+
+            ulong enemyPieces = color == 0
+                ? (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11])
+                : (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5]);
+
+            ulong validSquares = ~friendlyPieces;
+
+            int pieceType = color == 0 ? 5 : 11;
+
+            ulong kingsIter = kings;
+            while (kingsIter != 0)
+            {
+                int fromSquare = BitOperations.TrailingZeroCount(kingsIter);
+
+                ulong attacks = KingMoveGenerator.KingPreCalcs[fromSquare] & validSquares;
+
+                ulong attacksIter = attacks;
+                while (attacksIter != 0)
+                {
+                    int toSquare = BitOperations.TrailingZeroCount(attacksIter);
+
+                    bool isCapture = (enemyPieces & (1UL << toSquare)) != 0;
+
+                    moves[moveCount++] = new Move(fromSquare, toSquare, pieceType, isCapture);
+
+                    attacksIter &= attacksIter - 1;
+                }
+
+                kingsIter &= kingsIter - 1;
+            }
+
+            return moveCount;
+        }
+    }
+
     public static class allMoves {
-        public static int GenerateAllPseudoLegalMoves(Board b, Span<Move> moves)
+        public static int GenerateAllPseudoLegalMoves(Board b, Span<Move> moves, int col)
         {
             int totalMoves = 0;
-            int color = b.SideToMove;
+            int color = col;
 
             // 1. Generate Pawn Moves
             int pawnCount = PawnMoveGenerator.GetPawnMoves(b, b.Pieces[color == 0 ? 0 : 6], color, moves);
@@ -773,8 +848,33 @@ namespace ChessEngine
             totalMoves += queenCount;
 
             // TODO: Generate King Moves (and Castling)
-            
+            int kingMoves = KingMoveGenerator.GetKingMoves(b, b.Pieces[color == 0 ? 5 : 11], color, moves.Slice(totalMoves));
+            totalMoves += kingMoves;
             return totalMoves;
+        }
+
+        public static int GenerateAllLegalMoves(Board b, Span<Move> moves, int col)
+        {
+            int generatedMoves = GenerateAllPseudoLegalMoves(b, moves, col);
+            int ind = 0;
+            for (int i = 0; i < generatedMoves; i++)
+            {
+                b.MakeMove(moves[i]);
+                bool isValid = !b.isCheckForColor(col,moves.Slice(generatedMoves));
+                b.UnmakeMove();
+                if (isValid)
+                {
+                    moves[ind] = moves[i];
+                    ind++;
+                }
+                else
+                {
+                    
+                }
+
+            }
+
+            return ind;
         }
     }
 }

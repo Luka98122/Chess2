@@ -12,12 +12,41 @@ namespace ChessEngine
             //Console.WriteLine("Done! Copy the output above.");
             //return;
             InitializeNotationMaps();
-
+            KingMoveGenerator.PreCalculateKingMoves();
             KnightMoveGenerator.PreCalculateKnightMoves();
             BishopMoveGenerator.PreCalculateBishopAttacks();
             RookMoveGenerator.PreCalculateRookAttacks();
         }
-        
+
+        static string SquareToString(int square)
+        {
+            int file = square % 8;
+            int rank = square / 8;
+
+            char fileChar = (char)('a' + file);
+            char rankChar = (char)('1' + rank);
+
+            return $"{fileChar}{rankChar}";
+        }
+
+        public static void showMoves(Board b, Span<Move> possibleMoves)
+        {
+            int movesFound = allMoves.GenerateAllLegalMoves(b, possibleMoves,b.SideToMove);
+
+            ulong toSquaresBitboard = 0;
+
+            for (int i = 0; i < movesFound; i++)
+            {
+                ref Move m = ref possibleMoves[i];
+
+                string moveStr = $"{SquareToString(m.FromSquare)}{SquareToString(m.ToSquare)}";
+                // build bitboard of destinations
+                toSquaresBitboard |= 1UL << m.ToSquare;
+            }
+
+            renderBitboard(toSquaresBitboard);
+        }
+
         public static Dictionary<int, string> IndexToNotation = new Dictionary<int, string>(); // fun fekt: int.getHashCode() runnuje odmah i samo vrati taj int, ne hashuje ga.
         public static Dictionary<string, int> NotationToIndex = new Dictionary<string, int>();
 
