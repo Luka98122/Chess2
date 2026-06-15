@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Reflection.PortableExecutable;
 using ChessEngine;
 using static ChessEngine.EngineHelpers;
@@ -127,6 +128,12 @@ namespace ChessEngine
             else
             {
                 HalfMoveClock++; // Normal moves increment the clock
+            }
+
+            if (move.IsPromotion)
+            {
+                Pieces[0+6*SideToMove] &= ~(1UL << move.ToSquare);
+                Pieces[move.PromotedPieceType + 6 * SideToMove] |= (1UL << move.ToSquare);
             }
 
             // 4. Update Turn

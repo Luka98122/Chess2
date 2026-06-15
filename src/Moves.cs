@@ -96,6 +96,24 @@ namespace ChessEngine
         private const ulong NotFileA = 0xFEFEFEFEFEFEFEFEUL;
         private const ulong NotFileH = 0x7F7F7F7F7F7F7F7FUL;
 
+        private static int AddPawnMove(Span<Move> moves, ref int moveCount, int from, int to, int piece, bool isCapture)
+        {
+            bool isPromotion = to >= 56 || to <= 7;
+
+            if (isPromotion)
+            {
+                moves[moveCount++] = new Move(from, to, piece, isCapture) { IsPromotion = true, PromotedPieceType = 4 };
+                moves[moveCount++] = new Move(from, to, piece, isCapture) { IsPromotion = true, PromotedPieceType = 3 };
+                moves[moveCount++] = new Move(from, to, piece, isCapture) { IsPromotion = true, PromotedPieceType = 2 };
+                moves[moveCount++] = new Move(from, to, piece, isCapture) { IsPromotion = true, PromotedPieceType = 1 };
+            }
+            else
+            {
+                moves[moveCount++] = new Move(from, to, piece, isCapture);
+            }
+            return moveCount;
+        }
+
         // The optimized signature: Pass the board state, the pawn bitboard, the color, and the target Span.
         public static int GetPawnMoves(Board b, ulong pawns, int color, Span<Move> moves)
         {
@@ -114,7 +132,7 @@ namespace ChessEngine
                 while (iter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(iter);
-                    moves[moveCount++] = new Move(toSquare - 8, toSquare, 0);
+                    moveCount = AddPawnMove(moves, ref moveCount, toSquare-8, toSquare, 0, false);
                     iter &= iter - 1; // Clears the least significant '1' bit
                 }
 
@@ -135,7 +153,7 @@ namespace ChessEngine
                 while (iter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(iter);
-                    moves[moveCount++] = new Move(toSquare - 7, toSquare, 0, true);
+                    moveCount = AddPawnMove(moves, ref moveCount, toSquare - 7, toSquare, 0, true);
                     iter &= iter - 1;
                 }
 
@@ -145,7 +163,7 @@ namespace ChessEngine
                 while (iter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(iter);
-                    moves[moveCount++] = new Move(toSquare - 9, toSquare, 0, true);
+                    moveCount = AddPawnMove(moves, ref moveCount, toSquare - 9, toSquare, 0, true);
                     iter &= iter - 1;
                 }
             }
@@ -157,7 +175,7 @@ namespace ChessEngine
                 while (iter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(iter);
-                    moves[moveCount++] = new Move(toSquare + 8, toSquare, 6);
+                    moveCount = AddPawnMove(moves, ref moveCount, toSquare+8, toSquare, 0, false);
                     iter &= iter - 1;
                 }
 
@@ -178,7 +196,7 @@ namespace ChessEngine
                 while (iter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(iter);
-                    moves[moveCount++] = new Move(toSquare + 9, toSquare, 6, true);
+                    moveCount = AddPawnMove(moves, ref moveCount, toSquare + 9, toSquare, 6, true);
                     iter &= iter - 1;
                 }
 
@@ -188,7 +206,7 @@ namespace ChessEngine
                 while (iter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(iter);
-                    moves[moveCount++] = new Move(toSquare + 7, toSquare, 6, true);
+                    moveCount = AddPawnMove(moves, ref moveCount, toSquare + 7, toSquare, 6, true);
                     iter &= iter - 1;
                 }
             }
@@ -847,7 +865,6 @@ namespace ChessEngine
             int queenCount = QueenMoveGenerator.GetQueenMoves(b, b.Pieces[color == 0 ? 4 : 10], color, moves.Slice(totalMoves));
             totalMoves += queenCount;
 
-            // TODO: Generate King Moves (and Castling)
             int kingMoves = KingMoveGenerator.GetKingMoves(b, b.Pieces[color == 0 ? 5 : 11], color, moves.Slice(totalMoves));
             totalMoves += kingMoves;
             return totalMoves;

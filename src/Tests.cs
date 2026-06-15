@@ -59,6 +59,29 @@ namespace ChessEngine
             );
 
             RunTest("13. Kings (Type shi) - Legal", SetupBoard((11, 1), (3, 56), (5, 17)), 1, 11, -1);
+
+            // --- 5. PAWN PROMOTION TESTS ---
+
+            // 14. White pawn promotes by push (e7 -> e8)
+            RunTest(
+                "14. White Pawn Promotion (Push)",
+                SetupBoard((0, 52)), // white pawn on e7
+                0,
+                0,
+                52
+            );
+
+            // 15. Black pawn promotes by capture (e2 x d1)
+            RunTest(
+                "15. Black Pawn Promotion (Capture)",
+                SetupBoard(
+                    (6, 12), // black pawn on e2
+                    (1, 3)   // white knight on d1 (capture target)
+                ),
+                1,
+                6,
+                12
+            );
         }
 
         // Helper to quickly spawn a board with specific pieces
