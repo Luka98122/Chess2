@@ -17,15 +17,15 @@ Console.WriteLine("=== Initial Board State ===");
 RenderBoard(board);
 // possibleMoves je span koji se passuje u skoro sve
 Span<Move> possibleMoves = new Move[500];
-showMoves(board, possibleMoves);
+showMoves2(board, possibleMoves);
 
 Move moveE4 = new Move(from: 12, to: 28, piece: 0);
 board.MakeMove(moveE4);
-showMoves(board, possibleMoves);
+showMoves2(board, possibleMoves);
 
 Move moveC5 = new Move(from: 50, to: 34, piece: 6);
 board.MakeMove(moveC5);
-showMoves(board, possibleMoves);
+showMoves2(board, possibleMoves);
 RenderBoard(board);
 
 // 3. Render the board state again to show the move
@@ -115,6 +115,32 @@ namespace ChessEngine
             // Add piece to target square by setting the bit
             Pieces[move.PieceType] |= (1UL << move.ToSquare);
 
+            if (move.IsCastle)
+            {
+                int rookType = SideToMove == 0 ? 3 : 9;
+                
+                if (move.ToSquare == 6) // White Kingside (g1)
+                {
+                    Pieces[rookType] &= ~(1UL << 7); // Remove rook from h1
+                    Pieces[rookType] |= (1UL << 5);  // Add rook to f1
+                }
+                else if (move.ToSquare == 2) // White Queenside (c1)
+                {
+                    Pieces[rookType] &= ~(1UL << 0); // Remove rook from a1
+                    Pieces[rookType] |= (1UL << 3);  // Add rook to d1
+                }
+                else if (move.ToSquare == 62) // Black Kingside (g8)
+                {
+                    Pieces[rookType] &= ~(1UL << 63); // Remove rook from h8
+                    Pieces[rookType] |= (1UL << 61);  // Add rook to f8
+                }
+                else if (move.ToSquare == 58) // Black Queenside (c8)
+                {
+                    Pieces[rookType] &= ~(1UL << 56); // Remove rook from a8
+                    Pieces[rookType] |= (1UL << 59);  // Add rook to d8
+                }
+            }
+
             // 3. Handle Captures & 50-Move Rule
             if (move.IsCapture)
             {
@@ -171,6 +197,7 @@ namespace ChessEngine
 
         public bool IsSquareAttacked(int square, int attackerColor)
         {
+            if (square<0 || square>63) return false;
             ulong friendlyPieces = attackerColor == 0 
                 ? (Pieces[0] | Pieces[1] | Pieces[2] | Pieces[3] | Pieces[4] | Pieces[5])
                 : (Pieces[6] | Pieces[7] | Pieces[8] | Pieces[9] | Pieces[10] | Pieces[11]);

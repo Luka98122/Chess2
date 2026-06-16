@@ -809,30 +809,92 @@ namespace ChessEngine
                 ? (b.Pieces[6] | b.Pieces[7] | b.Pieces[8] | b.Pieces[9] | b.Pieces[10] | b.Pieces[11])
                 : (b.Pieces[0] | b.Pieces[1] | b.Pieces[2] | b.Pieces[3] | b.Pieces[4] | b.Pieces[5]);
 
+            ulong occupied = friendlyPieces | enemyPieces;
             ulong validSquares = ~friendlyPieces;
 
             int pieceType = color == 0 ? 5 : 11;
+            int opponentColor = color == 0 ? 1 : 0;
 
             ulong kingsIter = kings;
             while (kingsIter != 0)
             {
                 int fromSquare = BitOperations.TrailingZeroCount(kingsIter);
 
-                ulong attacks = KingMoveGenerator.KingPreCalcs[fromSquare] & validSquares;
+                ulong attacks = KingPreCalcs[fromSquare] & validSquares;
 
                 ulong attacksIter = attacks;
                 while (attacksIter != 0)
                 {
                     int toSquare = BitOperations.TrailingZeroCount(attacksIter);
-
                     bool isCapture = (enemyPieces & (1UL << toSquare)) != 0;
 
                     moves[moveCount++] = new Move(fromSquare, toSquare, pieceType, isCapture);
-
                     attacksIter &= attacksIter - 1;
                 }
 
                 kingsIter &= kingsIter - 1;
+            }
+
+            // Castling Moves
+            if (color == 0) // White
+            {
+                // Kingside (Bit 0 is set)
+                if ((b.CastlingRights & 1) != 0)
+                {
+                    // Check if f1 (5) and g1 (6) are completely empty
+                    if ((occupied & ((1UL << 5) | (1UL << 6))) == 0)
+                    {
+                        // Check if e1 (4), f1 (5), or g1 (6) are under attack
+                        if (!b.IsSquareAttacked(4, 1) && !b.IsSquareAttacked(5, 1) && !b.IsSquareAttacked(6, 1))
+                        {
+                            moves[moveCount++] = new Move(4, 6, pieceType) { IsCastle = true };
+                        }
+                    }
+                }
+                
+                // Queenside (Bit 1 is set)
+                if ((b.CastlingRights & 2) != 0)
+                {
+                    // Check if b1 (1), c1 (2), and d1 (3) are completely empty
+                    if ((occupied & ((1UL << 1) | (1UL << 2) | (1UL << 3))) == 0)
+                    {
+                        // Check if e1 (4), d1 (3), or c1 (2) are under attack (b1 doesn't matter for attacks per chess rules)
+                        if (!b.IsSquareAttacked(4, 1) && !b.IsSquareAttacked(3, 1) && !b.IsSquareAttacked(2, 1))
+                        {
+                            moves[moveCount++] = new Move(4, 2, pieceType) { IsCastle = true };
+                        }
+                    }
+                }
+            }
+            else // Black
+            {
+                // Kingside (Bit 2 is set)
+                if ((b.CastlingRights & 4) != 0)
+                {
+                    // Check if f8 (61) and g8 (62) are completely empty
+                    if ((occupied & ((1UL << 61) | (1UL << 62))) == 0)
+                    {
+                        // Check if e8 (60), f8 (61), or g8 (62) are under attack
+                        if (!b.IsSquareAttacked(60, 0) && !b.IsSquareAttacked(61, 0) && !b.IsSquareAttacked(62, 0))
+                        {
+                            moves[moveCount++] = new Move(60, 62, pieceType) { IsCastle = true };
+                        }
+                    }
+                }
+                
+                // Queenside (Bit 3 is set)
+                if ((b.CastlingRights & 8) != 0)
+                {
+                    // Check if b8 (57), c8 (58), and d8 (59) are completely empty
+                    if ((occupied & ((1UL << 57) | (1UL << 58) | (1UL << 59))) == 0)
+                    {
+                        // Check if e8 (60), d8 (59), or c8 (58) are under attack
+                        if (!b.IsSquareAttacked(60, 0) && !b.IsSquareAttacked(59, 0) && !b.IsSquareAttacked(58, 0))
+                        {
+                            moves[moveCount++] = new Move(60, 58, pieceType) { IsCastle = true };
+                        }
+                    }
+                }
             }
 
             return moveCount;
