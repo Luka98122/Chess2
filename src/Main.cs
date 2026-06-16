@@ -281,8 +281,8 @@ namespace ChessEngine
             }
             return 2; // Stalemate (pat)
         }
-    
-        public int GetBoardEval()
+        public static List<int> vals = new List<int> { 100, 300, 300, 500, 900, 6767, -100, -300, -300, -500, -900, -6767 };
+        public int GetBoardEval(int depth=1)
         {
             //-1000 crni dominatuje
             //+1000 beli dominatuje
@@ -294,7 +294,7 @@ namespace ChessEngine
             if (state == 1) return -100000; // Crni (1) je uradio checkmate na belog
 
             // Piece eval
-            List<int> vals = new List<int> { 100, 300, 300, 500, 900, 6767, -100, -300, -300, -500, -900, -6767 };
+            
             int score = 0;
             for (int i = 0; i < 12; i++)
             {
@@ -318,6 +318,47 @@ namespace ChessEngine
                 score += 50; // Configurable, but putting in check is weighted to 50cp (half a pawn)
             }
 
+            if (depth > 0)
+            {
+                // 1. Evaluate hanging pieces for White (Indices 0-4: Pawn to Queen)
+                for (int i = 0; i < 5; i++)
+                {
+                    ulong piecesIter = this.Pieces[i];
+                    while (piecesIter != 0)
+                    {
+                        int sq = BitOperations.TrailingZeroCount(piecesIter);
+
+                        // If attacked by Black (1) and NOT defended by White (0)
+                        if (this.IsSquareAttacked(sq, 1) && !this.IsSquareAttacked(sq, 0))
+                        {
+                            // Penalize White by reducing the score
+                            score -= vals[i] / 2;
+                        }
+
+                        piecesIter &= piecesIter - 1; // Clear the processed piece
+                    }
+                }
+
+                // 2. Evaluate hanging pieces for Black (Indices 6-10: Pawn to Queen)
+                for (int i = 6; i < 11; i++)
+                {
+                    ulong piecesIter = this.Pieces[i];
+                    while (piecesIter != 0)
+                    {
+                        int sq = BitOperations.TrailingZeroCount(piecesIter);
+
+                        // If attacked by White (0) and NOT defended by Black (1)
+                        if (this.IsSquareAttacked(sq, 0) && !this.IsSquareAttacked(sq, 1))
+                        {
+                            // Penalize Black. Because Black's values in `vals` are negative,
+                            // subtracting a negative number adds to the score (favoring White).
+                            score -= vals[i] / 2;
+                        }
+
+                        piecesIter &= piecesIter - 1;
+                    }
+                }
+            }
 
             return score;
         }
