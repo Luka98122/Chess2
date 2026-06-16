@@ -49,22 +49,18 @@ namespace ChessEngine
 
         public static void showMoves2(Board b, Span<Move> moves)
         {
-            // Generate the legal moves for whoever's turn it is
-            int moveCount = allMoves.GenerateAllLegalMoves(b, moves, b.SideToMove);
             
-            Console.WriteLine($"\n=== Moves for {(b.SideToMove == 0 ? "White" : "Black")} ({moveCount} total) ===");
+            Console.WriteLine($"\n=== Moves for {(b.SideToMove == 0 ? "White" : "Black")} ({moves.Length} total) ===");
             
-            for (int i = 0; i < moveCount; i++)
+            for (int i = 0; i < moves.Length; i++)
             {
                 Move m = moves[i];
                 
-                // Translate the 0-63 indices into standard algebraic notation (e.g., "e2")
                 string from = IndexToNotation[m.FromSquare];
                 string to = IndexToNotation[m.ToSquare];
                 
                 string output = $"{from} -> {to} |";
                 
-                // Append flags only if they are true
                 if (m.IsCapture) 
                 {
                     output += " is_capture";
@@ -72,7 +68,7 @@ namespace ChessEngine
                 
                 if (m.IsEnPassant) 
                 {
-                    output += " is_en_passant"; // Good to differentiate from standard captures when debugging pawns
+                    output += " is_en_passant";
                 }
                 
                 if (m.IsCastle) 
@@ -82,10 +78,8 @@ namespace ChessEngine
                 
                 if (m.IsPromotion) 
                 {
-                    // Convert the promoted piece type index to a readable char (N, B, R, Q)
                     char[] pieceChars = { 'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k' };
                     char promoChar = char.ToUpper(pieceChars[m.PromotedPieceType]);
-                    
                     output += $" is_promotion promotionPieceType: {promoChar}";
                 }
                 
@@ -93,7 +87,6 @@ namespace ChessEngine
             }
             Console.WriteLine("=========================");
         }
-        
 
         public static Dictionary<int, string> IndexToNotation = new Dictionary<int, string>(); // fun fekt: int.getHashCode() runnuje odmah i samo vrati taj int, ne hashuje ga.
         public static Dictionary<string, int> NotationToIndex = new Dictionary<string, int>();

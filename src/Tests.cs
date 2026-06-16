@@ -4,7 +4,6 @@ using static ChessEngine.EngineHelpers;
 
 namespace ChessEngine
 {
-    // Define a delegate so we can pass different move generator functions to our test runner dynamically
     public delegate int MoveGenerator(Board b, ulong pieces, int color, Span<Move> moves);
 
     public static class Tests
@@ -14,88 +13,113 @@ namespace ChessEngine
             Console.WriteLine("=== RUNNING ENGINE TESTS ===\n");
 
             // --- 1. ROOK TESTS ---
-            // d4 (index 27)
             RunTest("1. Rook (Open Center)", SetupBoard((3, 27)), 0, 3, 27);
-            // d4 with friendly Pawn on d6 (index 43) and enemy Knight on g4 (index 30)
             RunTest("2. Rook (Blocked & Captures)", SetupBoard((3, 27), (0, 43), (7, 30)), 0, 3, 27);
 
             // --- 2. BISHOP TESTS ---
-            // d4 (index 27)
             RunTest("3. Bishop (Open Center)", SetupBoard((2, 27)), 0, 2, 27);
-            // c3 (index 18) with friendly Pawn on e5 (index 36) and enemy Pawn on a5 (index 32)
             RunTest("4. Bishop (Blocked & Captures)", SetupBoard((2, 18), (0, 36), (6, 32)), 0, 2, 18);
 
             // --- 3. QUEEN TESTS ---
-            // e4 (index 28)
             RunTest("5. Queen (Open Center)", SetupBoard((4, 28)), 0, 4, 28);
-            // d4 (index 27) completely boxed in by friendly and enemy pieces
             RunTest("6. Queen (Crowded Center)", SetupBoard((4, 27), (0, 35), (0, 36), (6, 18), (6, 28)), 0, 4, 27);
 
             // --- 4. KNIGHT TESTS ---
-            // e4 (index 28)
             RunTest("7. Knight (Center Jump)", SetupBoard((1, 28)), 0, 1, 28);
-            // a1 (index 0) to test edge boundary constraints
             RunTest("8. Knight (Edge A1)", SetupBoard((1, 0), (0, 10)), 0, 1, 0);
 
             // --- 5. PAWN TESTS ---
-            // White Pawn on e2 (index 12) checking single and double pushes
             RunTest("9. White Pawn (Pushes)", SetupBoard((0, 12)), 0, 0, 12);
-            // White Pawn on d4 (index 27) with Black pawns on c5 (34) and e5 (36)
             RunTest("10. White Pawn (Captures)", SetupBoard((0, 27), (6, 34), (6, 36)), 0, 0, 27);
-            // Black Pawn on e7 (index 52) checking downward pushes
             RunTest("11. Black Pawn (Pushes)", SetupBoard((6, 52)), 1, 6, 52);
 
-
-            // Can knight reveal check
             RunTest("12. Knight (Pinned to King by Rook - LEGAL MOVES)",
-            SetupBoard(
-                    (7, 36), // knight
-                    (11, 60), // king
-                    (3, 4)   // rook
-                ),
-                1, // black
-                7, // knight
-                -1 // Show all legal moves
-            );
-
-            RunTest("13. Kings (Type shi) - Legal", SetupBoard((11, 1), (3, 56), (5, 17)), 1, 11, -1);
-
-            // --- 5. PAWN PROMOTION TESTS ---
-
-            // 14. White pawn promotes by push (e7 -> e8)
-            RunTest(
-                "14. White Pawn Promotion (Push)",
-                SetupBoard((0, 52)), // white pawn on e7
-                0,
-                0,
-                52
-            );
-
-            // 15. Black pawn promotes by capture (e2 x d1)
-            RunTest(
-                "15. Black Pawn Promotion (Capture)",
                 SetupBoard(
-                    (6, 12), // black pawn on e2
-                    (1, 3)   // white knight on d1 (capture target)
+                    (7, 36), // black knight
+                    (11, 60), // black king
+                    (3, 4)   // white rook
                 ),
-                1,
-                6,
-                12
-            );
+                1, 7, -1);
+
+            RunTest("13. Kings (Legal moves near enemy pieces)", SetupBoard((11, 1), (3, 56), (5, 17)), 1, 11, -1);
+
+            // --- 6. PAWN PROMOTION TESTS ---
+            RunTest("14. White Pawn Promotion (Push)", SetupBoard((0, 52)), 0, 0, 52);
+            RunTest("15. Black Pawn Promotion (Capture)", SetupBoard((6, 12), (1, 3)), 1, 6, 12);
+
+            // --- 7. CASTLING TESTS ---
+            RunTest("16. White Castling (Kingside & Queenside Open)", 
+                SetupBoard((5, 4), (3, 0), (3, 7)), // King e1, Rooks a1 and h1
+                0, 5, 4);
+
+            RunTest("17. Black Castling (Kingside & Queenside Open)", 
+                SetupBoard((11, 60), (9, 56), (9, 63)), // King e8, Rooks a8 and h8
+                1, 11, 60);
+
+            RunTest("18. Castling Through Check (Blocked by Enemy Rook)", 
+                SetupBoard(
+                    (5, 4),  // White King e1
+                    (3, 7),  // White Rook h1
+                    (9, 61)  // Black Rook f8 (attacking f1, preventing castling)
+                ), 
+                0, 5, 4);
+
+
+
+            // --- 9. ABSOLUTE PIN TESTS ---
+            RunTest("20. Absolute Pin (Pawn Pinned to King - Cannot move)", 
+                SetupBoard(
+                    (5, 4),   // White King e1
+                    (0, 12),  // White Pawn e2
+                    (9, 60)   // Black Rook e8
+                ), 
+                0, 0, 12);
+
+            RunTest("21. Pinned Piece Can Capture Pinner", 
+                SetupBoard(
+                    (5, 4),   // White King e1
+                    (3, 28),  // White Rook e4
+                    (10, 60)  // Black Queen e8
+                ), 
+                0, 3, 28);
         }
 
-        // Helper to quickly spawn a board with specific pieces
-        // Format: (PieceType index, Square index)
         private static Board SetupBoard(params (int pieceType, int square)[] placements)
         {
             Board b = new Board();
-            // Clear standard array
-            for(int i = 0; i < 12; i++) b.Pieces[i] = 0UL;
             
+            // 1. Clear standard array AND wipe all default castling rights
+            for (int i = 0; i < 12; i++) b.Pieces[i] = 0UL;
+            b.CastlingRights = 0; 
+            
+            bool hasWhiteKing = false;
+            bool hasBlackKing = false;
+
             foreach (var p in placements)
             {
                 b.Pieces[p.pieceType] |= (1UL << p.square);
+                if (p.pieceType == 5) hasWhiteKing = true;
+                if (p.pieceType == 11) hasBlackKing = true;
             }
+
+            // 2. Dynamically restore Castling Rights based on piece placement
+            // If a test places a King and Rook in their home positions, grant the right.
+            if ((b.Pieces[5] & (1UL << 4)) != 0) // White King on e1
+            {
+                if ((b.Pieces[3] & (1UL << 7)) != 0) b.CastlingRights |= 1; // Kingside
+                if ((b.Pieces[3] & (1UL << 0)) != 0) b.CastlingRights |= 2; // Queenside
+            }
+            
+            if ((b.Pieces[11] & (1UL << 60)) != 0) // Black King on e8
+            {
+                if ((b.Pieces[9] & (1UL << 63)) != 0) b.CastlingRights |= 4; // Kingside
+                if ((b.Pieces[9] & (1UL << 56)) != 0) b.CastlingRights |= 8; // Queenside
+            }
+
+            // 3. SAFETY: Dummy kings to prevent TrailingZeroCount from crashing IsSquareAttacked
+            if (!hasWhiteKing) b.Pieces[5] |= (1UL << 0);   // a1
+            if (!hasBlackKing) b.Pieces[11] |= (1UL << 63); // h8
+
             return b;
         }
 
@@ -105,7 +129,7 @@ namespace ChessEngine
             Span<Move> moves = stackalloc Move[500];
             
             // Extract the bitboard of just the specific piece type we are testing
-            ulong pieceBitboard = b.Pieces[targetPieceType];
+            ulong pieceBitboard = targetPieceType == -1 ? 0UL : b.Pieces[targetPieceType];
             
             int count = allMoves.GenerateAllLegalMoves(b, moves, color);
 
@@ -114,13 +138,16 @@ namespace ChessEngine
             for (int i = 0; i < count; i++)
             {
                 // Only visualize moves originating from our specific test piece 
-                if (moves[i].FromSquare == targetSquare || targetSquare==-1)
+                if (targetSquare == -1 || moves[i].FromSquare == targetSquare)
                 {
                     attackBitboard |= (1UL << moves[i].ToSquare);
                 }
             }
 
             RenderSideBySide(title, b, attackBitboard, count);
+            
+            // Render formatted moves under the board
+            showMoves2(b, moves.Slice(0, count));
         }
 
         private static void RenderSideBySide(string title, Board b, ulong attacks, int moveCount)
