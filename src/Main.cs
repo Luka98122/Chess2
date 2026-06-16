@@ -289,6 +289,20 @@ namespace ChessEngine
             }
 
             // Check eval:
+            
+            int wKingSquare = BitOperations.TrailingZeroCount(this.Pieces[5]);
+            bool isWInCheck = this.IsSquareAttacked(wKingSquare, 1); //black attacking white king
+            if (isWInCheck)
+            {
+                score -= 50; // Configurable, but putting in check is weighted to 50cp (half a pawn)
+            }
+
+            int bKingSquare = BitOperations.TrailingZeroCount(this.Pieces[11]);
+            bool isBInCheck = this.IsSquareAttacked(bKingSquare, 0); //white attacking black king
+            if (isWInCheck)
+            {
+                score += 50; // Configurable, but putting in check is weighted to 50cp (half a pawn)
+            }
 
 
             return score;
