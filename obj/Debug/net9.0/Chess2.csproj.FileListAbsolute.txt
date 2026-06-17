@@ -1,0 +1,15 @@
+/home/luka/src/repos/Chess2/bin/Debug/net9.0/Chess2
+/home/luka/src/repos/Chess2/bin/Debug/net9.0/Chess2.deps.json
+/home/luka/src/repos/Chess2/bin/Debug/net9.0/Chess2.runtimeconfig.json
+/home/luka/src/repos/Chess2/bin/Debug/net9.0/Chess2.dll
+/home/luka/src/repos/Chess2/bin/Debug/net9.0/Chess2.pdb
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.GeneratedMSBuildEditorConfig.editorconfig
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.AssemblyInfoInputs.cache
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.AssemblyInfo.cs
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.csproj.CoreCompileInputs.cache
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.sourcelink.json
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.dll
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/refint/Chess2.dll
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.pdb
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/Chess2.genruntimeconfig.cache
+/home/luka/src/repos/Chess2/obj/Debug/net9.0/ref/Chess2.dll

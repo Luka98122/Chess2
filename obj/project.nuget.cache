@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "BFU8X6hMILo=",
+  "success": true,
+  "projectFilePath": "/home/luka/src/repos/Chess2/Chess2.csproj",
+  "expectedPackageFiles": [
+    "/home/luka/.nuget/packages/microsoft.netcore.app.host.linux-x64/9.0.17/microsoft.netcore.app.host.linux-x64.9.0.17.nupkg.sha512"
+  ],
+  "logs": []
+}
