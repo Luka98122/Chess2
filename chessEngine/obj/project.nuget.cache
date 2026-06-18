@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "Bx0bGXS3le0=",
+  "dgSpecHash": "WeyEjGZfSy4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\luka\\Source\\Repos\\Chess2\\chessEngine\\chessEngine.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "/home/luka/src/repos/Chess2/chessEngine/chessEngine.csproj",
+  "expectedPackageFiles": [
+    "/home/luka/.nuget/packages/microsoft.windowsdesktop.app.ref/8.0.28/microsoft.windowsdesktop.app.ref.8.0.28.nupkg.sha512"
+  ],
   "logs": []
 }

@@ -1,8 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "RIg8XGdcg0I=",
+  "dgSpecHash": "Qz3aqD4Dac8=",
   "success": true,
-  "projectFilePath": "C:\\Users\\luka\\Source\\Repos\\Chess2\\StockfishV0\\StockfishV0.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "/home/luka/src/repos/Chess2/StockfishV0/StockfishV0.csproj",
+  "expectedPackageFiles": [
+    "/home/luka/.nuget/packages/microsoft.windowsdesktop.app.ref/8.0.28/microsoft.windowsdesktop.app.ref.8.0.28.nupkg.sha512",
+    "/home/luka/.nuget/packages/microsoft.netcore.app.host.linux-x64/8.0.28/microsoft.netcore.app.host.linux-x64.8.0.28.nupkg.sha512"
+  ],
   "logs": []
 }

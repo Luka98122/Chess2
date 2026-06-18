@@ -250,7 +250,19 @@ namespace ChessEngine
                 return false;
             }
 
-
+            b.EnPassantSquare = -1;
+            if (parts.Length >= 4 && parts[3] != "-")
+            {
+                if (parts[3].Length == 2)
+                {
+                    int file = parts[3][0] - 'a';
+                    int rank = parts[3][1] - '1';
+                    if (file >= 0 && file < 8 && rank >= 0 && rank < 8)
+                    {
+                        b.EnPassantSquare = rank * 8 + file;
+                    }
+                }
+            }
 
             b.HalfMoveClock = 0;
 

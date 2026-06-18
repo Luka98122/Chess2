@@ -166,6 +166,18 @@ namespace ChessEngine
                     moveCount = AddPawnMove(moves, moveCount, toSquare - 9, toSquare, 0, true);
                     iter &= iter - 1;
                 }
+
+                // --- En Passant ---
+                if (b.EnPassantSquare != -1)
+                {
+                    int epSq = b.EnPassantSquare;
+                    int fromLeft = epSq - 7;
+                    int fromRight = epSq - 9;
+                    if (fromLeft >= 0 && (pawns & (1UL << fromLeft)) != 0)
+                        moves[moveCount++] = new Move(fromLeft, epSq, 0, true) { IsEnPassant = true };
+                    if (fromRight >= 0 && (pawns & (1UL << fromRight)) != 0)
+                        moves[moveCount++] = new Move(fromRight, epSq, 0, true) { IsEnPassant = true };
+                }
             }
             else // Black (PieceType 6)
             {
@@ -208,6 +220,18 @@ namespace ChessEngine
                     int toSquare = BitOperations.TrailingZeroCount(iter);
                     moveCount = AddPawnMove(moves, moveCount, toSquare + 7, toSquare, 6, true);
                     iter &= iter - 1;
+                }
+
+                // --- En Passant ---
+                if (b.EnPassantSquare != -1)
+                {
+                    int epSq = b.EnPassantSquare;
+                    int fromRight = epSq + 7;
+                    int fromLeft = epSq + 9;
+                    if (fromRight < 64 && (pawns & (1UL << fromRight)) != 0)
+                        moves[moveCount++] = new Move(fromRight, epSq, 6, true) { IsEnPassant = true };
+                    if (fromLeft < 64 && (pawns & (1UL << fromLeft)) != 0)
+                        moves[moveCount++] = new Move(fromLeft, epSq, 6, true) { IsEnPassant = true };
                 }
             }
 

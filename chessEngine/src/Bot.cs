@@ -52,7 +52,12 @@ namespace ChessEngine
         public static int CacheHits = 0;
         public static void Store(ulong key, int depth, int score, int flag)
         {
-            Entries[key % Size] = new TTEntry { Key = key, Depth = depth, Score = score, Flag = flag };
+            int index = (int)(key % Size);
+            ref TTEntry existing = ref Entries[index];
+            if (existing.Key != key || depth >= existing.Depth)
+            {
+                existing = new TTEntry { Key = key, Depth = depth, Score = score, Flag = flag };
+            }
         }
 
         public static bool TryProbe(ulong key, int depth, int alpha, int beta, out int score)
@@ -114,7 +119,7 @@ namespace ChessEngine
             // 1. "Stand Pat" Evaluation
             // If our position is already good enough without making any captures, 
             // we can establish a baseline score.
-            int standPat = b.GetBoardEval();
+            int standPat = b.GetBoardEval(includeHangingPieces: false);
             standPat = b.SideToMove == 0 ? standPat : -standPat;
 
             // Fail-hard beta cutoff

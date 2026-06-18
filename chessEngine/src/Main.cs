@@ -107,7 +107,11 @@ namespace ChessEngine
 
         public void MakeMove(Move move)
         {
-            // 1. Take a snapshot of the ENTIRE current board and push it to history
+            if (_historyPly >= _stateHistory.Length)
+            {
+                Array.Resize(ref _stateHistory, _stateHistory.Length * 2);
+            }
+
             ref BoardStateInfo state = ref _stateHistory[_historyPly++];
             state.CastlingRights = CastlingRights;
             state.MoveMade = move;
@@ -117,35 +121,42 @@ namespace ChessEngine
             state.CapturedPieceType = -1;
             state.ZobristKey = this.ZobristKey;
 
+            EnPassantSquare = -1;
+
             CastlingRights &= CastlingRightsMask[move.FromSquare];
             CastlingRights &= CastlingRightsMask[move.ToSquare];
 
-            if (move.IsCapture)
+            if (move.IsEnPassant)
             {
-                // If White (0) is moving, opponent pieces are at indices 6-11.
-                // If Black (1) is moving, opponent pieces are at indices 0-5.
+                int capturedPawnSquare = move.ToSquare + (SideToMove == 0 ? -8 : 8);
+                int opponentPawnType = SideToMove == 0 ? 6 : 0;
+                state.CapturedPieceType = opponentPawnType;
+                Pieces[opponentPawnType] &= ~(1UL << capturedPawnSquare);
+                HalfMoveClock = 0;
+            }
+            else if (move.IsCapture)
+            {
                 int startIndex = SideToMove == 0 ? 6 : 0;
                 ulong targetBit = 1UL << move.ToSquare;
 
-                // Find and remove the exact captured piece, then save its type
                 for (int i = startIndex; i <= startIndex + 5; i++)
                 {
                     if ((Pieces[i] & targetBit) != 0)
                     {
                         state.CapturedPieceType = i;
-                        Pieces[i] &= ~targetBit; // Remove the captured piece
+                        Pieces[i] &= ~targetBit;
                         break;
                     }
                 }
                 HalfMoveClock = 0;
             }
-            else if (move.PieceType == 0 || move.PieceType == 6) // Pawn move
+            else if (move.PieceType == 0 || move.PieceType == 6)
             {
-                HalfMoveClock = 0; // Pawn pushes also reset the clock
+                HalfMoveClock = 0;
             }
             else
             {
-                HalfMoveClock++; // Normal moves increment the clock
+                HalfMoveClock++;
             }
 
             Pieces[move.PieceType] &= ~(1UL << move.FromSquare);
@@ -157,6 +168,16 @@ namespace ChessEngine
             else
             {
                 Pieces[move.PieceType] |= (1UL << move.ToSquare);
+            }
+
+            if ((move.PieceType == 0 || move.PieceType == 6) && !move.IsPromotion)
+            {
+                int fromRank = move.FromSquare / 8;
+                int toRank = move.ToSquare / 8;
+                if (Math.Abs(toRank - fromRank) == 2)
+                {
+                    EnPassantSquare = move.FromSquare + (SideToMove == 0 ? 8 : -8);
+                }
             }
 
             if (move.IsCastle)
@@ -241,7 +262,15 @@ namespace ChessEngine
             // 4. Restore the Captured Piece (if there was one)
             if (state.CapturedPieceType != -1)
             {
-                Pieces[state.CapturedPieceType] |= (1UL << move.ToSquare);
+                if (move.IsEnPassant)
+                {
+                    int capturedSquare = move.ToSquare + (SideToMove == 0 ? -8 : 8);
+                    Pieces[state.CapturedPieceType] |= (1UL << capturedSquare);
+                }
+                else
+                {
+                    Pieces[state.CapturedPieceType] |= (1UL << move.ToSquare);
+                }
             }
 
             // 5. Reverse the Castling Rook
@@ -255,7 +284,7 @@ namespace ChessEngine
                 else if (move.ToSquare == 62) { Pieces[rookType] &= ~(1UL << 61); Pieces[rookType] |= (1UL << 63); } // g8
                 else if (move.ToSquare == 58) { Pieces[rookType] &= ~(1UL << 59); Pieces[rookType] |= (1UL << 56); } // c8
             }
-            this.ZobristKey = _stateHistory[_historyPly].ZobristKey;
+            this.ZobristKey = state.ZobristKey;
         }
 
         // Helper method to locate and clear a captured piece
@@ -383,13 +412,8 @@ namespace ChessEngine
         }
 
         public static readonly int[] vals = new int[] { 100, 300, 300, 500, 900, 6767, -100, -300, -300, -500, -900, -6767 }; 
-        public int GetBoardEval(int depth = 1)
+        public int GetBoardEval(bool includeHangingPieces = true)
         {
-            //-1000 crni dominatuje
-            //+1000 beli dominatuje
-
-            
-            // Piece eval
 
             int score = 0;
             for (int pt = 0; pt < 12; pt++)
@@ -442,7 +466,7 @@ namespace ChessEngine
                 score += 50; // Configurable, but putting in check is weighted to 50cp (half a pawn)
             }
 
-            if (depth > 0)
+            if (includeHangingPieces)
             {
                 ulong occupied = this.Pieces[0] | this.Pieces[1] | this.Pieces[2] | this.Pieces[3] | this.Pieces[4] | this.Pieces[5] |
                                  this.Pieces[6] | this.Pieces[7] | this.Pieces[8] | this.Pieces[9] | this.Pieces[10] | this.Pieces[11];
@@ -505,20 +529,17 @@ namespace ChessEngine
         {
             Board copy = new Board();
 
-            // Deep copy the piece bitboards (Assuming Pieces is a ulong array, usually size 12)
-            if (this.Pieces != null)
-            {
-                copy.Pieces = new ulong[this.Pieces.Length];
-                Array.Copy(this.Pieces, copy.Pieces, this.Pieces.Length);
-            }
+            copy.Pieces = new ulong[this.Pieces.Length];
+            Array.Copy(this.Pieces, copy.Pieces, this.Pieces.Length);
 
-            // Copy all other essential state variables! 
-            // Make sure you include castling rights, en passant squares, half-move clocks, etc.
             copy.SideToMove = this.SideToMove;
+            copy.CastlingRights = this.CastlingRights;
+            copy.EnPassantSquare = this.EnPassantSquare;
+            copy.HalfMoveClock = this.HalfMoveClock;
             copy.GameType = this.GameType;
-
-            // Example: copy.WhiteCanCastleKingside = this.WhiteCanCastleKingside;
-            // Example: copy.EnPassantSquare = this.EnPassantSquare;
+            copy.ZobristKey = this.ZobristKey;
+            copy._historyPly = this._historyPly;
+            Array.Copy(this._stateHistory, copy._stateHistory, this._stateHistory.Length);
 
             return copy;
         }

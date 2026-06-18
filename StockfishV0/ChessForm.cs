@@ -1271,8 +1271,7 @@ namespace StockfishV0
 
             if (delayMs <= 0)
             {
-                // You can call this directly now; it won't block the thread.
-                MakeBotMoveIfNeeded();
+                _ = MakeBotMoveIfNeededAsync();
                 return;
             }
 
@@ -1284,7 +1283,7 @@ namespace StockfishV0
                 aiTimer.Stop();
                 aiTimer.Dispose();
 
-                MakeBotMoveIfNeeded();
+                _ = MakeBotMoveIfNeededAsync();
             };
 
             aiTimer.Start();
@@ -1303,75 +1302,93 @@ namespace StockfishV0
             return moveCount > 0;
         }
 
-           
 
-        private async void MakeBotMoveIfNeeded()
+        private async Task MakeBotMoveIfNeededAsync()
         {
-            // Do NOT set aiMoveQueued = false here! 
-            // We want the AI to remain locked while it thinks.
-
-            if (!aiEnabled || gameIsOver || (!aiVsAiEnabled && engineBoard.SideToMove != aiColor))
+            try
             {
-                aiMoveQueued = false; // Safe to clear if we abort
-                return;
+                if (!aiEnabled || gameIsOver || (!aiVsAiEnabled && engineBoard.SideToMove != aiColor))
+                {
+                    aiMoveQueued = false;
+                    return;
+                }
+
+                if (!HasLegalMoves())
+                {
+                    aiMoveQueued = false;
+                    gameIsOver = true;
+                    CheckGameOverState();
+                    Invalidate();
+                    return;
+                }
+
+                int d = 5;
+                if (engineBoard.GameType == 1)
+                {
+                    d = 5;
+                }
+                else if (engineBoard.GameType == 2)
+                {
+                    d = 8;
+                }
+
+                boardInputLocked = true;
+
+                Board aiSandboxBoard = engineBoard.Clone();
+
+                Move botMove = await Task.Run(() => Bot.Think(aiSandboxBoard, d, 0));
+
+                if (!IsValidBotMove(botMove, engineBoard))
+                {
+                    gameIsOver = true;
+                    CheckGameOverState();
+                    boardInputLocked = false;
+                    aiMoveQueued = false;
+                    Invalidate();
+                    return;
+                }
+
+                engineBoard.MakeMove(botMove);
+                SetLastMoveHighlight(botMove);
+                engineEvalCentipawns = engineBoard.GetBoardEval();
+
+                CheckGameOverState();
+
+                if (!gameIsOver)
+                {
+                    UpdateBoardPerspectiveForTurn();
+                }
+
+                ClearSelectedPiece();
+                Invalidate();
+
+                boardInputLocked = false;
+                aiMoveQueued = false;
+
+                if (aiVsAiEnabled && !gameIsOver)
+                {
+                    QueueBotMoveIfNeeded();
+                }
             }
-
-            // Call our new synchronous helper to dodge the C# 12 async/span error
-            if (!HasLegalMoves())
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ERROR] AI move failed: {ex.Message}");
+                boardInputLocked = false;
                 aiMoveQueued = false;
                 Invalidate();
-                return;
-            }
-
-            int d = 5;
-            int topX = 50;
-            if (engineBoard.GameType == 1)
-            {
-                d = 5;
-                topX = 50;
-            }
-            else if (engineBoard.GameType == 2)
-            {
-                d = 8;
-                topX = 25;
-            }
-
-            // 1. Lock human input so dragging pieces is disabled in the UI
-            boardInputLocked = true;
-
-            // 2. Create a deep copy of the board for the AI to safely mutate
-            Board aiSandboxBoard = engineBoard.Clone();
-
-            // 3. Offload the calculation, passing the CLONE instead of the real board
-            Move botMove = await Task.Run(() => Bot.Think(aiSandboxBoard, d, topX));
-
-            // 4. The background thread is done. Execute the chosen move on the REAL board.
-            engineBoard.MakeMove(botMove);
-            SetLastMoveHighlight(botMove);
-            engineEvalCentipawns = engineBoard.GetBoardEval();
-
-            CheckGameOverState();
-
-            if (!gameIsOver)
-            {
-                UpdateBoardPerspectiveForTurn();
-            }
-
-            ClearSelectedPiece();
-            Invalidate();
-
-            // 4. Unlock everything ONLY AFTER the move is fully processed and drawn
-            boardInputLocked = false;
-            aiMoveQueued = false;
-
-            // 5. If it's an AI vs AI game, queue the next move immediately
-            if (aiVsAiEnabled && !gameIsOver)
-            {
-                QueueBotMoveIfNeeded();
             }
         }
 
+        private static bool IsValidBotMove(Move move, Board board)
+        {
+            if (move.FromSquare < 0 || move.FromSquare > 63 ||
+                move.ToSquare < 0 || move.ToSquare > 63 ||
+                move.PieceType < 0 || move.PieceType > 11)
+                return false;
+
+            ulong mask = 1UL << move.FromSquare;
+            return (board.Pieces[move.PieceType] & mask) != 0;
+        }
         private void AddMoveHintForLegalMove(Move move)
         {
             int row;
