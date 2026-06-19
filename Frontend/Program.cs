@@ -1,8 +1,7 @@
-using StockfishV0;
 using System;
 using System.Windows.Forms;
 
-namespace StockfishV0
+namespace Frontend
 {
     internal static class Program
     {

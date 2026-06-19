@@ -1,4 +1,4 @@
-# StockfishV0
+# Chess-Engine
 
 A custom chess engine with a Windows Forms GUI, built from scratch in C# using bitboards, magic move generation, and modern search techniques. This was the final project for my Sophomore year at [Računarska gimnazija](https://rg.edu.rs).
 
@@ -42,15 +42,15 @@ Co-developed with [Stribor Pavlović](https://github.com/spav-s).
 ```pwsh
 dotnet restore
 dotnet build -c Release
-dotnet run --project Frontend/StockfishV0.csproj -c Release
+dotnet run --project Frontend/Frontend.csproj -c Release
 ```
 
-Or open `StockfishV0.sln` in Visual Studio 2022+ and press F5.
+Or open `main.sln` in Visual Studio 2022+ and press F5.
 
 ## Project Structure
 
 ```
-├── StockfishV0.sln
+├── main.sln
 ├── Puzzles.csv                         # Lichess training puzzles (1000 positions)
 ├── chessEngine/                        # Class library -- the chess engine
 │   └── src/

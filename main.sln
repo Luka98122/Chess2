@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36221.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StockfishV0", "StockfishV0\StockfishV0.csproj", "{0F74939C-CE76-47D9-AAB7-5828B73DE022}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Frontend", "Frontend\Frontend.csproj", "{0F74939C-CE76-47D9-AAB7-5828B73DE022}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "chessEngine", "chessEngine\chessEngine.csproj", "{1DA59B9F-D786-4D2B-8519-C1B766C6C6BF}"
 EndProject
