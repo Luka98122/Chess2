@@ -4,8 +4,9 @@ A custom chess engine with a Windows Forms GUI, built from scratch in C# using b
 
 Co-developed with [Stribor Pavlović](https://github.com/spav-s).
 
-<video src="https://github.com/user-attachments/assets/a5e4d713-48ae-4634-951b-db84b348cb52" autoplay loop muted playsinline width="100%"></video>
-
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/07bad375-5dc5-4f2a-b3fd-753a7acc9c0e" width="800" alt="Demo AI v AI" />
+</div>
 
 ## Engine Highlights
 
@@ -40,7 +41,10 @@ Co-developed with [Stribor Pavlović](https://github.com/spav-s).
 - Live evaluation bar with numerical score
 - Checkmate, stalemate, and threefold repetition detection
 
-<video src="https://github.com/user-attachments/assets/b69bbf83-6910-4bf6-bad3-4c3bfd43f801" autoplay loop muted playsinline width="100%"></video>
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/9b750719-dd40-467e-b915-034b142dbb6f" width="800" alt="Demo Puzzle Solving" />
+</div>
+
 
 ## Build & Run
 
